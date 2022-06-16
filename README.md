@@ -8,7 +8,6 @@ I am doing this in an effort to learn about Python Programming and TDD with
 Python Programming. 
 
 ===============================================================================
-
 In order to do this conversion, we first need to understand the structure of
 the text file. The assumption been made that this information is available.
 This information needs to be imported into the program and stored in a usable
@@ -57,15 +56,18 @@ Scenario:
         the record as this record strcuture. 
 
 ===============================================================================
-
-Things to do:  (so much but so little time!)
-
-    1:  Build code to get source_file_name of the file to be converted, what 
-        format we wish to convert too.
-    2:  Once we have the file name, we need to check if there is existing
-        file structure information availble.
-    3:  Exsiting file structure information is available: Load it.
-    4:  No existing file structure information available: Create it.
-    5:  Read the input file and convert it to the desired output format
-        and save it.
+ Things to do:  (so much but so little time!)
+    
+    Build code to get source_file_name of the file to be converted, what 
+    format we wish to convert too.
+    
+    Once we have the file name, we need to check if there is existing file 
+    structure information availble.
+    
+    Exsiting file structure information is available: Load it and use it.
+    
+    No existing file structure information available: Create it.
+    
+    Read the input file and convert it to the desired output format and 
+    save it.
 
