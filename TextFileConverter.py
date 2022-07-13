@@ -17,13 +17,15 @@
 # Contributor(s): Alan Wynne
 #
 
-__doc__="""Use OpenDocument to generate your documents."""
+__doc__ = """Use OpenDocument to generate your documents."""
 
 #===============================================================================
 # import statements
 
 import sys
 import os
+import datetime as dt
+import json
 import PySimpleGUI as sg
 
 #===============================================================================
@@ -35,68 +37,77 @@ version = '0000.0000'
 #===============================================================================
 # Classes
 
+class FieldRecordNameError(Exception):
+    """An exception class for errors on fields record names"""
+    pass
+
+class NoParametersError(Exception):
+    """An exception class for calling without parametres"""
+    pass
+    
+class InvalidParametersError(Exception):
+    """An exception class for calling with Invalid parametres"""
+    pass
+
+class FunctionalityNotYetSupported(Exception):
+    """An exception class for empty Source files"""
+    pass
+
+class NoFileSelectedError(Exception):
+    """An exception class for when noi file is selected"""
+    pass
+
 class SourceFileAbsentError(Exception):
     """An exception class for empty Source files"""
-    
+    pass
+
 class SourceFileEmptyError(Exception):
     """An exception class for empty Source files"""
-    
-class cls_record:
-    """ Record class
-        Handle flat records in a file with a particular structure, and get them
-        into a python usable format.
-    """
+    pass
 
-    #===========================================================================
-    # Class Attributes
-
-    CLASS_NAME                  = 'cls_record_structure'
-    version                     = '0000.0000'
-
-    # =============================================================================
-    # @staticmethod decorator:  Add a Function to a class
-    # Class Static methods refer to :
-    # the generic cls rather than to self or a particular instances. nothing in
-    # the static method should refer to an instance
-
-    # =============================================================================
-    # @classmethod decorator:  Add a Custom Constructor to the Class
-    # determines Class methods and refer to class rather. Static Methods are used
-    # to ammend settings created in __init__
-
-    # =============================================================================
-    # Instance methods do not have particular instance decorators. Instance methods
-    # are relevant to a particular instnace
-
-    def __init__(self):
-        """ constructor method for cls_record_structure """
-
-        pass
+class OutputTypeNotSupportedError(Exception):
+    """An exception class for empty Source files"""
+    pass
 
 class cls_text_file:
     """ Text File class
-        Handle text files,
+
+        Text file class and methods to convert a text file to Json, or CSV
+        according to a predetermiend structure.
+
     """
+
     #===========================================================================
     # Class Attributes
 
-    CLASS_NAME                  = 'cls_text_file'
+    TITLE                       = 'Flat Text file to csv, json conversion'
     version                     = '0000.0000'
 
-
+    CONFIG_FILE_NAME            = 'file_conversion_configuration_template' 
+    CONFIG_FILE_EXTENSION       = '.fc.json'
+    CONFIG_FILE_FULL_NAME       = CONFIG_FILE_NAME + CONFIG_FILE_EXTENSION
+    INSTRUCTIONS                = f'Utility to do conversions on Data:\\n\\n' \
+        f'\\tInvoking this utility without parametrs will,\\n' \
+        f'\\tcreate a file in current working directory called "{CONFIG_FILE_FULL_NAME}".\\n' \
+        f'\\tin order to use this utility, you need to edit this file and save it with a name of your choice,\\n' \
+        f'\\twith the extension of ".fc.json". The file name should be the same name as the file you wish to convert.\\n\\n' \
+        f'\\tInvoking this utility with a parametrs of the file name you wish to convert, will cause the utility to look\\n' \
+        f'\\tfor the "your_file_name.fc.json" file. If found it will try to use it to do the file conversion. If it cannot\\n' \
+        f'\\tfind the file it will create the file with default settings, conversion will fail, and you will have to edit the\\n' \
+        f'\\tfile to have the desired settings.\\n' 
+                                   
     SUPPORTED_INPUT             = ('*.*', '*')
     SUPPORTED_INPUT_DESCRIP     = 'All files'
 
-    SUPPORTED_OUTPUT            = ('csv', 'json')
+    SUPPORTED_OUTPUT            = ('csv', 'json', 'dat', 'txt' )
     SUPPORTED_OUTPUT_DESCRIP    = str(SUPPORTED_OUTPUT)
 
     CHAR_COMMA                  = ','
     CHAR_QUOTE_SINGLE           = "'"
     CHAR_QUOTE_DOUBLE           = '"'
-
-    dd_text_file_structure      = {}   # data dicitonay defining the input file attributes
-    record_structures           = []   # list of record structures pertaining to the file
-
+    
+    log                         = False
+    
     # =============================================================================
     # @staticmethod decorator:  Add a Function to a class
     # Class Static methods refer to :
@@ -112,71 +123,97 @@ class cls_text_file:
         help_text = """
             TextFileConverter.py usage.
 
-                TextFileConverter.py self, (source_file_name = None, output_type = None, delim = None, text_qualifier = None)
+                TextFileConverter.py (sfn = None, ot = None, fd = None, tq = None)
 
-                Source_file_name: The name of the source file name to be converted to the desired output.
-                output_type     : The desired convertion process, currently csv or json
-                delim           : Applicable for csv is the field seperator or delimiter
-                text_qualifier  : The character desired to be used to enclose char, text or string fields
+                sfn             : The name of the source file to be converted to the desired output.
+                ot              : The desired output type, convertion process, currently csv or json
+                fd              : Applicable for csv is the field seperator or delimiter
+                tq              : The text qualifier, the character to be used to enclose character or string fields
+                log             : log=True or Log=False or left out,  used to determine if a log should be written or not.
 
         """
         print(help_text)
         return
 
     @staticmethod # Get and validate a file_name
-    def get_file_name(cls, file_name = None, file_types = None , message = None):
+    def get_file_name(cls, file_name = None, path = None, file_types = None , message = None):
+        """ Get a file name of particular file type"""
 
-        message             = ''
-        path                = os.getcwd()
+        #===========================================================================================
+        # Set Default values for parameters when not provided
 
-        if file_name        == None:
-            file_name       = ''
-
-        if file_name        == '':     # provided file name is empty get file name
-            message         = 'No File name provided!'
-        else:                          # provided file name to be verified.
-            if not os.path.isfile(file_name):
-                if os.path.isdir(file_name):
-                    path            = file_name
-                    os.chdir(path)
-                    message         = 'Provided file names is a path!'
-                    file_name       = ''
-                else:
-                    message         = 'Provided file name does not exist!'
-                    file_name        = ''
-
-        if file_types               == None:
+        file_types_descrip          =  ''
+            
+        if  file_name               == None:
+            file_name               =  ''
+    
+        if  path                    == None or path == '':
+            path                    =  os.getcwd()
+                
+        if  file_types              == None or file_types == '':
             file_types_descrip      =  cls_text_file.SUPPORTED_INPUT_DESCRIP
             file_types              =  cls_text_file.SUPPORTED_INPUT
+    
+        if  message                 == None:
+            message                 =  ''
+                
+        #===========================================================================================
+        # Split fine_name into path and filename, and validate them 
 
-        if isinstance(file_types, str):
-           file_types_descrip        = file_type
-           file_types                = tuple(map(file_types.split(', ') ))  # convert file types to tupple
+        if  isinstance(file_name, str):
 
-        if isinstance(file_types, tuple):
-            if file_types           == ():
+            if  os.path.isfile(file_name):
+                fp                  =  os.path.split(file_name)[0]   # Get Path portion of file name
+                fn                  =  os.path.split(file_name)[1]   # Get file name portion of file name
+                file_full_name      =  file_name
+                return(file_full_name)              # Early return, as file name already determined.
+            
+            elif os.path.isdir(file_name):
+                message             =  'Provided file names is a path!'
+                path                =  file_name
+                file_name           =  ''
+                file_full_name      =  ''
+
+            else: 
+                message             =  'No File name provided!'
+                path                =  file_name
+                file_name           =  ''
+                file_full_name      =  ''
+
+        else:
+            message                 =  'File name invalid!'
+            path                    =  os.getcwd()
+            file_name               =  ''
+            file_full_name          =  ''
+
+        if  isinstance(file_types, str):
+            file_types_descrip      =  file_types
+            file_types              =  tuple(file_types.split(', ') )  # convert file types to tupple
+
+        if  isinstance(file_types, tuple):
+            if  file_types          == ():
                 file_types_descrip  =  cls_text_file.SUPPORTED_INPUT_DESCRIP
                 file_types          =  cls_text_file.SUPPORTED_INPUT
             else:
-                if file_types           == cls_text_file.SUPPORTED_INPUT:
+                if  file_types          == cls_text_file.SUPPORTED_INPUT:
                     file_types_descrip  =  cls_text_file.SUPPORTED_INPUT_DESCRIP
                 else:
                     file_types_descrip  =  str(file_types)
-
-        if file_name                == '':          # no file_name provided, get file_name.
-            message                 = message + ' ' + 'Please select a file?'
-            file_name          = sg.popup_get_file(message ,
-                title               = TITLE,
-                default_path        = path,
-                default_extension   = ".txt",
-                file_types          = ((file_types_descrip, file_types),),
+                    
+        if  file_full_name          == '':          # no file_name provided, get file_name.
+            message                 =  message + ' ' + 'Please select a file?'
+            file_full_name          =  sg.popup_get_file(
+                message ,
+                title               =  TITLE,
+                default_path        =  path,
+                default_extension   =  '.txt',
+                file_types          =  ((file_types_descrip, file_types),),
                 )
 
-        if not file_name:
-            # sg.popup("Cancel", "No file_name selected")
-            raise SourceFileAbsentError("Quiting: no source_file_name selected!")
+        if  not file_full_name:
+            raise NoFileSelectedError("Quiting: no file selected!")
 
-        return(file_name)
+        return(full_file_name)
 
     # =============================================================================
     # @classmethod decorator:  Add a Custom Constructor to the Class
@@ -187,73 +224,436 @@ class cls_text_file:
     # Instance methods do not have particular instance decorators. Instance methods
     # are relevant to a particular instnace
 
-    def set_field_delim(self, delim):
+    def log(self, message = '', close = False):
+
+        if self.logging:
+        
+            if  not self.log_file_name:    
+                self.log_file_name      =  f'{__name__}{dt.datetime.now()}.log'
+                self.log_file_name      =  self.log_file_name.replace(' ', '-')
+                self.log_file_name      =  self.log_file_name.replace(':', '-')
+                self.log_file_name      =  os.path.join(os.getcwd(), self.log_file_name)
+                self.log_file           =  open(self.log_file_name, "w", encoding='utf-8', newline='\n')
+                self.log_file.write(f'{"="*25} {sys._getframe().f_back.f_code.co_name} open: {dt.datetime.now():%X}{"="*25}\n')
+            
+            if   message != '':
+                self.log_file.write(f'{dt.datetime.now():%X}\t{sys._getframe().f_back.f_code.co_name}\t{message}\n')
+
+            if  close:    
+                self.log_file.write(f'{"="*25} {sys._getframe().f_back.f_code.co_name} close: {dt.datetime.now():%X} {"="*25}\n')
+                self.log_file.close()
+        
+        return
+      
+    def set_sfn(self, sfn):
+        """ Set source file full name """
+
+        path = os.getcwd()
+        
+        if  sfn                 == None:
+            sfn                 =  ''
+    
+        self.sfp                =  os.path.split(sfn)[0]
+        self.sfn                =  os.path.split(sfn)[1]
+        self.sfe                =  os.path.splitext(self.sfn)[1]
+        self.sffn               =  os.path.join(self.sfp, self.sfn)
+    
+        if  self.sfp            == None:
+            self.sfp            == path
+     
+        if  isinstance(self.sfp, str):
+            if  self.sfp        == '':
+                self.sfp        == path
+            
+        if  isinstance(self.sfn, str):
+            self.sffn           =  cls_text_file.get_file_name(cls_text_file, file_name = sfn, path = self.sfp, file_types = cls_text_file.SUPPORTED_INPUT)
+
+        self.sfp                =  os.path.split(self.sffn)[0]
+        self.sfn                =  os.path.split(self.sffn)[1]
+        self.sfe                =  os.path.splitext(self.sfn)[1]
+
+        return(self.sfn)
+
+    def set_sfcffn(self, sfn):
+        """ Set source file Config file full name """
+
+        self.sfcffn             =  os.path.join(os.getcwd(), (os.path.splitext(self.sfn)[0] + cls_text_file.CONFIG_FILE_EXTENSION))
+
+        return(self.sfcffn)
+
+    def set_dffn(self, sfn):
+        """ Set Destination file full name """
+
+        if self.ot             =  'dat'
+            self.dffn          =  os.path.join(os.getcwd(), (os.path.splitext(self.sfn)[0] + '.out.dat'))
+        else:
+            self.dffn          =  os.path.join(os.getcwd(), (os.path.splitext(self.sfn)[0] + '.' + self.ot ))
+
+        return(self.dffn)
+                                
+    def set_fd(self, fd):
         """ Set Field delimiter """
 
-        if delim == '':
-            delim               = cls_text_file.CHAR_COMMA
-            self.fd             = cls_text_file.CHAR_COMMA
-            self.field_delim    = self.fd
-        else:
-            self.fd             = delim
-            self.field_delim    = self.fd
-        return(delim)
+        if  fd == None          or fd == '':
+            fd                  =  cls_text_file.CHAR_COMMA
+            self.fd             =  cls_text_file.CHAR_COMMA
+        else:   
+            self.fd             =  fd
 
-    def set_text_qualifier(self, text_qualifier):
+        return(self.fd)
+
+    def set_tq(self, tq):
         """ Set text Qualifier """
 
-        if text_qualifier == '':
-            text_qualifier      = cls_text_file.CHAR_QUOTE_SINGLE
-            self.tq             = cls_text_file.CHAR_QUOTE_SINGLE
-            self.text_qualifier = self.tq
+        if  tq == None          or tq     == '':
+            tq                  =  cls_text_file.CHAR_QUOTE_SINGLE
+            self.tq             =  cls_text_file.CHAR_QUOTE_SINGLE
+            self.tq = self.tq
         else:
-            self.tq             = text_qualifier
-            self.text_qualifier = self.tq
+            self.tq             =  tq
 
-        return(text_qualifier)
+        return(self.tq)
 
-    def __init__(self, source_file_name = None, output_type = None, delim = None, text_qualifier = None):
-        """ constructor method """
+    def set_ot(self, ot):
+        """ Set Output Type """
 
-        if source_file_name == None:
-            source_file_name      = ''
-            self.source_file_name = ''
-
-        if isinstance(source_file_name, str):
-            self.source_file_name = cls_text_file.get_file_name(cls_text_file, file_name = source_file_name, file_types = cls_text_file.SUPPORTED_INPUT)
-
-        if output_type in cls_text_file.SUPPORTED_OUTPUT:
-            self.output_type    = output
+        if  ot == None          or ot     == '':
+            ot                  =  cls_text_file.SUPPORTED_OUTPUT[0]
+            self.ot             =  cls_text_file.SUPPORTED_OUTPUT[0]
         else:
-            self.output_type    = cls_text_file.SUPPORTED_OUTPUT[0]
+            if  ot not in cls_text_file.SUPPORTED_OUTPUT:  
+                raise OutputTypeNotSupportedError("Quiting: Requested Output Type Not supported!")
 
-        self.fd                 = self.set_field_delim(delim)
-        self.tq                 = self.set_text_qualifier(text_qualifier)
+        return(self.ot)
+        
+    def get_sf_configuration(self):
+        """ get/set the source file configuration """
 
-        return
+        self.log(f'Config File: {self.sfcffn}')            
+        self.sf_config_dd       =  dict() 
 
+        if not os.path.isfile(self.sfcffn):
+            try: 
+                self.sfcffn         =  cls_text_file.get_file_name(cls_text_file, file_name = self.sfcffn, file_types = '*.json')
+            except NoFileSelectedError:
+                pass
+            
+        self.log(f'Config file: {self.sfcffn}')                        
+        self.sf_rs              =  dict()
+        
+        if os.path.isfile(self.sfcffn):
+            with    open(self.sfcffn, "r", encoding='utf-8', newline='\n') as source_file:
+                self.sf_config_dd = json.load(source_file)
+                self.log(f'self.sf_config_dd after json_load: <\n{json.dumps(self.sf_config_dd)}\n>')            
+
+        for k, v in self.sf_config_dd.items():
+            # source file configuration found, apply it where
+            self.log(f'key value pairs <{k=} {v=}>')
+            if  k               == 'field_delimeter':
+                self.log(f'set self.fd  = <{v=}>')
+                self.fd         =  v
+            if  k               == 'text_qualifier':
+                self.log(f'set self.tq  = <{v=}>')
+                self.tq         =  v
+            if  k               == 'output_type':
+                self.log(f'set self.ot  = <{v=}>')
+                self.ot         =  v
+            if  k               == 'record_structures':
+                self.log(f'record_structures = <{v=}>')
+                if isinstance(v, dict):
+                    self.log(f'record_structures is dict <{v=}>')
+                    self.sf_rs  = v
+                else:
+                    self.log(f'record_structures not dict <{v=}>')
+                    self.sf_rs  = dict(v)
+       
+        self.set_sf_configuration()
+        self.log(f'after set: <\n{json.dumps(self.sf_config_dd)}\n>')
+        
+        return(self.sf_config_dd)
+
+    def set_sf_configuration(self):
+        """ get/set the source file configuration """
+
+        self.log(f'Config file name:\t{self.sfcffn}')
+        self.log(f'Config settings: \n{json.dumps(self.sf_config_dd)}')
+
+        self.sf_config_dd.update({"TITLE": cls_text_file.TITLE})
+        # self.sf_config_dd.update({"INSTRUCTIONS":           str(cls_text_file.INSTRUCTIONS)})
+        
+        if  self.sfn:
+            self.sf_config_dd.update({"source_file_name":   self.sfn})           
+        else:
+            self.sf_config_dd.update({"source_file_name":   cls_text_file.CONFIG_FILE_NAME})
+            
+        self.sf_config_dd.update({"field_delimeter":        self.fd})
+        self.sf_config_dd.update({"text_qualifier":         self.tq})
+        self.sf_config_dd.update({"output_type":            self.ot})
+
+        if  not self.sf_rs:     # self.sf_rs is empty
+            # Build template record structures data dictionary.
+            for i in range(0, 2):
+                record_dd       = dict()
+                record_name     = f'Record_Name_{i}'
+                offset          = 0 
+                length          = 10 
+                decimals        = 0
+                
+                identifiers     = [
+                        "At least one field should have identifier values defined",
+                        "If no field has identifier values the output will be empty", 
+                        "although the identifiers allow for more than one", 
+                        "Normally only one required", 
+                        "remove items not required"
+                    ]
+                filters                         = [
+                        "choose records with these values", 
+                        "only create required filters ", 
+                        "create empty list if no filters required"
+                    ]
+                
+                for j in range(0,2):
+                    field_name  = f'field_name_{j}'
+                    data_type   = str(type(field_name))
+                    field_dd    = dict()
+                    field_dd.update({"offset":       offset})
+                    field_dd.update({"length":       length})
+                    field_dd.update({"decimals":     decimals})
+                    field_dd.update({"data_type":    data_type})
+                    field_dd.update({"identifiers":  identifiers})
+                    field_dd.update({"filters":      filters})
+                    offset      = offset + length    
+                    record_dd.update({field_name: field_dd})   
+                
+                self.sf_rs.update({record_name: record_dd}) 
+
+        self.sf_config_dd.update({"record_structures": self.sf_rs}) 
+        
+        if  not self.sfcffn: 
+            self.sfcffn = os.path.join( os.getcwd(), cls_text_file.CONFIG_FILE_FULL_NAME) 
+            
+        sfc_json_file = open(self.sfcffn, "w", encoding='utf-8', newline='\n')
+        json.dump(self.sf_config_dd, sfc_json_file, indent=4, sort_keys=False)
+        sfc_json_file.close()
+
+        self.log(f'Config file name:\t{self.sfcffn}')
+        self.log(f'Config settings:\n{json.dumps(self.sf_config_dd)}')
+        
+        return(self.sf_config_dd)
+
+    def convert_record(self, record, record_name):
+        """ read the file and convert it to the desired format."""
+
+        self.log(f'{record_name=}\n\t<{record}>')
+        record_dd      = dict()
+        records_fields = dict()
+        data_record    = ''
+        csv_record     = ''
+        json_record    = '' 
+        
+        # Given that the record should be included it must be converted to the requested format.
+        if  record_name: 
+                    
+            records_fields      = self.sf_rs.get(record_name)
+            self.log(f'{records_fields=}')
+            
+            if isinstance(records_fields, dict):
+
+                for field_name, field_structure     in records_fields.items():
+
+                    if isinstance(field_structure, dict):
+                    
+                        offset                  =  field_structure.get('offset')
+                        length                  =  field_structure.get('length')
+                        end_offset              =  offset + length
+                        decimals                =  field_structure.get('decimals')
+                        data_type               =  field_structure.get('data_type')
+                        identifiers             =  field_structure.get('identifiers')
+                        filters                 =  field_structure.get('filters')
+                        field_value             =  record[offset:end_offset].strip()
+                        self.log(f'{field_name=} {offset=} {end_offset=} {field_value=}') 
+                        record_dd.update({field_name: field_value})
+                        data_record             =  data_record + field_value.ljust(length)
+                        if data_type            == "<class 'int'>" and field_values.isdecimal():
+                            if csv_record:       
+                                csv_record      =  csv_record + self.fd + field_value.ljust(length) 
+                            else:   
+                                csv_record      =  field_value 
+                        else:   
+                            if csv_record:       
+                                csv_record      =  csv_record + self.fd + self.tq  + field_value + self.tq  
+                            else:   
+                                csv_record      =  self.tq + field_value + self.tq 
+
+        if  record_dd:
+            json_record = json.dumps(record_dd, indent=4, sort_keys=False) + f'\n' 
+
+        if  csv_record: 
+            csv_record      =  csv_record + f'\n' 
+
+        if  data_record:
+            data_record     =  data_record + f'\n'
+            
+        self.log('{"="*25}Next Records{"="*25}')
+        self.log(f'source record : <{record}>')
+        self.log(f'data   record : <{data_record}>')
+        self.log(f'CSV    record : <{csv_record}>')
+        self.log(f'json   record : <{json_record}>')
+                                
+        if self.ot == 'dat':
+            return (data_record)
+        
+        if self.ot == 'csv':
+            return (csv_record)
+
+        if self.ot == 'json':
+            return (json_record)                   
+
+        return()
+
+    def filter_record(self, record):
+        """ check if the record matches any identifier values and filter values, if it does convert it."""
+
+        record_structures       = self.sf_config_dd.get('record_structures')
+        record_name             = None     
+        record_dd               = dict()
+        field_dd                = dict()
+        data_record             = ''
+        csv_record              = ''
+        json_record             = ''
+        data_record             = ''
+        self.converted_record   = '' 
+        
+        # determine the record type for the record, accroding to the values of the identifiers.
+        # Ensure that the record should be included according to the values  in the filters.
+
+        if isinstance(record_structures, dict):
+
+            for record_name, records_fields in record_structures.items(): 
+                
+                if  isinstance(records_fields, dict):
+      
+                    for field_name, field_structure in records_fields.items():
+            
+                        if isinstance(field_structure, dict):
+                        
+                            offset                  =  field_structure.get('offset')
+                            length                  =  field_structure.get('length')
+                            decimals                =  field_structure.get('decimals')
+                            data_type               =  field_structure.get('data_type')
+                            identifiers             =  field_structure.get('identifiers')
+                            filters                 =  field_structure.get('filters')
+                            field_value             =  record[offset:length]
+                        
+                            if  isinstance(identifiers, list):
+                            
+                                if  identifiers                     != []: 
+                                
+                                    if  field_value  in identifiers:  
+                                    
+                                        if  isinstance(filters, list):
+                                        
+                                            if  filters                     == []: 
+
+                                                return(self.convert_record(record, record_name))
+                                            
+                                            else: 
+                                            
+                                                if  field_value         in filters:
+                                                
+                                                    return(self.convert_record(record, record_name))
+
+        return()
+
+    def convert_file(self):
+        """ read the file and convert it to the desired format."""
+
+        source_file_empty   =  True
+        self.converted_file =  open(self.dffn, "w", encoding='utf-8', newline='\n')
+        
+        with open(self.sffn, "r",  encoding='utf-8') as source_file:
+            for source_record in source_file:
+                source_file_empty = False
+                converted_record  = '' 
+                converted_record  = self.filter_record(source_record)   
+                if converted_record:
+                    self.converted_file.write(converted_record) 
+                
+        self.converted_file.close()
+        
+        if source_file_empty:
+            raise SourceFileEmptyError()
+        
+        return()
+         
     def print(self):
         """ print the instance attributes. """
 
-        import json
+        class_dd                    = dict()
+        class_dd.update({'TITLE': cls_text_file.TITLE})
+        class_dd.update({'CLASS_NAME': cls_text_file.__class__})
 
-        cls_text_file_attributes_dd = {
-            'CLASS_NAME':               cls_text_file.CLASS_NAME,
-            'Attributes':               {
-                'version':                  cls_text_file.version,
-                'CHAR_COMMA':               cls_text_file.CHAR_COMMA,
-                'CHAR_QUOTE_SINGLE':        cls_text_file.CHAR_QUOTE_SINGLE,
-                'CHAR_QUOTE_DOUBLE':        cls_text_file.CHAR_QUOTE_DOUBLE,
-                'source_file_name':           self.source_file_name,
-                'field_delim':              self.field_delim,
-                'text_qualifier':           self.text_qualifier,
-                'SUPPORTED_OUTPUT':         cls_text_file.SUPPORTED_OUTPUT,
-                'output_type':              self.output_type
-                }
-            }
+        class_attributtes_dd        = dict()
+        class_attributtes_dd.update({'version':                 cls_text_file.version})
+        class_attributtes_dd.update({'CHAR_COMMA':              cls_text_file.CHAR_COMMA})
+        class_attributtes_dd.update({'CHAR_QUOTE_SINGLE':       cls_text_file.CHAR_QUOTE_SINGLE})
+        class_attributtes_dd.update({'CHAR_QUOTE_DOUBLE':       cls_text_file.CHAR_QUOTE_DOUBLE})
+        class_attributtes_dd.update({'source_file_full_name':   self.sffn})
+        class_attributtes_dd.update({'source_file_name':        self.sfn})
+        class_attributtes_dd.update({'source_file_ext':         self.sfe})
+        class_attributtes_dd.update({'field_delim':             self.fd})
+        class_attributtes_dd.update({'text_qualifier':          self.tq})
+        class_attributtes_dd.update({'SUPPORTED_OUTPUT':        cls_text_file.SUPPORTED_OUTPUT})
+        class_attributtes_dd.update({'output_type':             self.ot})
+        
+        class_dd.update({'Attributes': class_attributtes_dd})
 
-        print(json.dumps(cls_text_file_attributes_dd, indent=4, sort_keys=False))
         return(0)
+         
+    def __init__(self, sfn = None, ot = None, fd = None, tq = None, log = False):
+        """ constructor method """
+
+        # initialiase attributes
+                
+        self.log_file_name      =  str() 
+        self.sffn               =  str()
+        self.sfn                =  str()
+        self.sfcffn             =  str() 
+        self.sfe                =  str()
+        self.ot                 =  str(cls_text_file.SUPPORTED_OUTPUT[0])
+        self.fd                 =  str(cls_text_file.CHAR_COMMA)
+        self.tq                 =  str(cls_text_file.CHAR_QUOTE_SINGLE)
+        self.sf_config_dd       =  dict()
+        self.sf_rs              =  dict()
+        self.offn               =  str()
+        
+        self.logging            =  log
+        self.log('') 
+    
+        if  sfn  == None        or sfn == '':
+            self.sf_config_dd   =  self.set_sf_configuration()
+            raise NoParametersError('Required parameters not provided, template configuration file created!')
+                                       
+        self.sfn                =  self.set_sfn(sfn)        
+        self.sfcffn             =  self.set_sfcffn(sfn)
+        self.sf_config_dd       =  self.get_sf_configuration()
+                                
+        self.ot                 =  self.set_ot(ot)
+        self.fd                 =  self.set_fd(fd)
+        self.tq                 =  self.set_tq(tq)
+                               
+        self.sf_config_dd       =  self.set_sf_configuration()
+        self.set_dffn           =  self.set_dffn(self.sfn)         
+                            
+        #===============================================================================
+        # All the hard work happens here, the source file is converted
+
+        self.convert_file()
+       
+        self.print()
+        self.log(close = True) 
+
+        return
 
 #===============================================================================
 # Main Processing
@@ -265,26 +665,29 @@ print(f"Start of Main Program: {__name__}")
 print(f"Name of the script      : {sys.argv[0]=}")
 print(f"Arguments of the script : {sys.argv[1:]=}")
 
-args                    = ''
-source_file_name_parm   = '' 
-output_type_parm        = ''
-delim_parm              = ''
-text_qualifier_parm     = ''
+args                            = sys.argv
+source_file_full_name_parm      = '' 
+output_type_parm                = ''
+delim_parm                      = ''
+text_qualifier_parm             = ''
 
 i = 1
 for arg in args:
     print(f'\t Argument {i}:<{arg}>')
-    if 'source_file_name' in arg:
-        source_file_name_parm = arg
-    if 'output_type=' in arg:
-        output_type_parm = arg
-    if 'delim=' in arg:
-        delim_parm = arg
-    if 'text_qualifier=' in arg:
-        text_qualifier_parm = arg
+    if 'source_file_full_name'      in arg:
+        source_file_full_name_parm  =  arg
+    if 'output_type='               in arg:
+        output_type_parm            =  arg
+    if 'delim='                     in arg:
+        delim_parm                  =  arg
+    if 'text_qualifier='            in arg:
+        text_qualifier_parm         =  arg
     i += 1
 
-# text_file = cls_text_file(source_file_name_parm, output_type_parm, delim_parm, text_qualifier_parm)
+#try: 
+#    text_file = cls_text_file()
+#except NoFileSelectedError:
+#    print(f"Test class cls_text_file No parms: NoFileSelectedError exception")
 
 #===============================================================================
 # In order to do this conversion, we first need to understand the structure of
@@ -316,4 +719,6 @@ for arg in args:
 #   5:  Read the input file and convert it to the desired output format
 #       and save it.
 
-# source_file_name  = 'D:/Users/A142367/OneDrive - Standard Bank/WIP/Python/test_TextFileConverter.txt'
+# source_file_full_name  = 'D:/Users/A142367/OneDrive - Standard Bank/WIP/Python/test_TextFileConverter.txt'
+
+print(f"End of Main Program: {__name__}")
