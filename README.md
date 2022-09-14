@@ -1,73 +1,51 @@
 # TextFileConverter
-TextFileConverter is a python project to convert Structured Text flat file 
-into csv or json files. 
 
-This is currently a work in progress, and still is not delivering any resutls.
+## Introduction
+TextFileConverter is a python project to convert Structured Text or data flat file into csv or json files. Other formats might be explored later.
 
-I am doing this in an effort to learn about Python Programming and TDD with 
-Python Programming. 
+This is currently a work in progress, and still is not delivering any results.
 
-===============================================================================
-In order to do this conversion, we first need to understand the structure of
-the text file. The assumption been made that this information is available.
-This information needs to be imported into the program and stored in a usable
-format. The structure will be saved in a json file, so that it can be used 
-again.
+I am doing this in an effort to learn about Python Programming and TDD with Python Programming. 
 
-Scenario:
+---
+
+## What is a Structured Text or data flat file? 
+
+A Structured Text or data flat file, is a file of data of known structure, but the structure metadata is not part of the file.
+
+## What is structure metadata? 
+
+The Structure metadata is the information about the records in the structured text or data file. 
+
+It is assumed that the text or data file will be a file of data of one or more record structures. These record structures need to be provided to the text file converter in a json or Excel file. This file will be assumed to have the same name as the source text file with one of the following suffixes/extension  'fc.json' or 'fc.xlsx'.
+
+## How does the process work?
+
+On invoking the TextFileConverter Application the following needs to be provided:
+
+1. Source file name:  If source file name is not provided the program will request it.
+2. Destination Format: If the conversion process is not provided csv will be assumed.
+3. Field Delimiter: If the field delimiter is not provided, comma will be assumed.
+4. Text qualifier: If text qualifier is not provided single quote will be assumed.   
+
+Once the process starts it will look for the metadata of the text or data file structure. It will look for this information in a file named the same as the Source file name, but with one of the following extensions "fc.json" or "fc.xlsx". If no such file is found, a template file will be created and the process will end in failure. It is up to the user to then edit the template according to the file structure, or provide the correct metadata file.  
+
+### Scenario:
 
     a_text_file.dat   to be converted to csv.
 
-        When the program runs, it needs to be provided with the source file 
-        to be converted, the conversion process (csv, json) the field 
-        delimiter and the text qulifier. All parameters are optional. 
+   Execute the text file converter as follows: 
+   
+   textFileConverter sfn=a_text_file.dat ot=csv fd=, tq='
 
-        if source file name is not provided the program will request it.
-        if the conversion process is not provided csv will be defaulted
-        if the field delimiter is not provided it will be defaulted to comma
-        if text qualifier is not provided it will be defaulted to single quote        
+   The program will first ensure that the file  "a_text_file.dat" exists in the current directory or in the path specified if it is provided. 
+   it will then look for the files "a_text_file.fc.json" or "a_text_file.fc.xlsx" if not found it will create the file "a_text_file.fc.json" and then the user will have to edit it to have the appropriate metadata for the file "a_text_file.dat".
 
-        The final settings for the file will be saved in a json file that can be
-        reused to do a simialr task on a new version of the source file name.
-        The json file storing this information will be called "a_text_file.fi.json"
+   Assuming everything is in place, the program should then create a file "a_text_file.csv" which should represent the file "a_text_file.dat" but with the fields in the file separated with the appropriate Field delimiter , text fields appropriately enclosed with the relevant Text Qualifier (Relevant to csv only), also the Metadata field configuration will be overwritten with the current settings and metadata. 
 
-        Each time the program runs it will look foir files endign with "fi.json"
-        and list them for selection to be used to re-apply the same conversion
-        process.
-        
-        The "a_text_file.fi.json" file will also contain a data dicitionary 
-        of record structures for each record type in the file. The data dictioanry 
-        will stipulate the field name and value that will identify how to select
-        records for that particular structure.  
-        
-        a record structure will have a name and will be save in a seperate
-        record structure json file called "a_record_structure_name.rs.json" 
-        keeping it out sideof the "fi.json" file means it could be used for
-        other file's as well.
+---
 
-        The record structure will be defined as a data dictionary, the 
-        primary key of the record structure data dictionary will be the 
-        record structure name the Value of the Record structure key will be 
-        another data dictionary of the Fields that make up the record.
-        Each Field name will be a key of this data dictionary and it will 
-        have a data dictionary of the Record attributes. The record attributes
-        are, starting offset, field length, ending offset (always staring 
-        offset + length), and optionaly a value for the field that will identify
-        the record as this record strcuture. 
+# Things to do:  (so much but so little time!)
 
-===============================================================================
- Things to do:  (so much but so little time!)
-    
-    Build code to get source_file_name of the file to be converted, what 
-    format we wish to convert too.
-    
-    Once we have the file name, we need to check if there is existing file 
-    structure information availble.
-    
-    Exsiting file structure information is available: Load it and use it.
-    
-    No existing file structure information available: Create it.
-    
-    Read the input file and convert it to the desired output format and 
-    save it.
-
+- What about XML
+- What about yaml
