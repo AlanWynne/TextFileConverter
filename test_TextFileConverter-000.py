@@ -22,10 +22,13 @@ __doc__="""Use OpenDocument to generate your documents."""
 #===============================================================================
 # import statements
 
-import os
-import TextFileConverter as tfc
+
 import pytest
+
+import os
 import shutil
+
+from GitHub.TextFileConverter import TextFileConverter as tfc
 
 #===============================================================================
 # Global Data
@@ -36,13 +39,33 @@ version = '0000.0000'
 path                            =  os.getcwd()
 log                             =  False
 
-def delete_file_no_exception(file):
+parent_dir       = os.getcwd()
+test_dir_name    = 'TextFileConverter/TestDirectory'
+root_file_name   = 'TDD_MasterTestFile_Customers_Accounts'
 
-    try:
-        os.remove(file)
-    except FileNotFoundError:
-        pass 
-        
+test_dir         = os.path.join(os.getcwd(), test_dir_name)
+
+test_input_dat   = root_file_name + '.dat'
+test_config_json = root_file_name + '.fc.json'
+test_config_xlsx = root_file_name + '.fc.xlsx'
+test_output_csv  = root_file_name + '.csv'
+test_output_json = root_file_name + '.json'
+test_output_dat  = root_file_name + '.out.dat'
+    
+def delete_file_obj_no_exception(obj):
+
+    if os.path.isfile(obj):
+        try:
+            os.remove(obj)
+        except FileNotFoundError:
+            pass 
+
+    if os.path.isdir(obj):
+        try:
+            shutil.rmtree(obj)
+        except FileNotFoundError:
+            pass 
+            
 #===============================================================================
 # Classes
 
@@ -50,135 +73,288 @@ def delete_file_no_exception(file):
 
 def test_setup ():
 
-    # Remove    everything that should not exist before testing.
-    # Arrange
+    # Do everything to cleanup and setup the testing environment
+    # Remove everything that should not exist before testing.
+    # Copy test file to the testing directory.
+ 
+    while test_dir_name in os.getcwd():
+        os.chdir("..")
 
-    files = os.listdir(os.getcwd())
+    parent_dir       = os.getcwd()
+    test_dir         = os.path.join(os.getcwd(), test_dir_name)
 
-    for f in files:
-        if 'TextFileConverter' in f:
-            if '.log' in f:
-                delete_file_no_exception(f)
-
-    # Act 
-
+    delete_file_obj_no_exception(test_dir)
+    os.mkdir(test_dir)        # Create new empty test directory
+    os.chdir(test_dir)        # Make new Test Directory the current Directory
+    
+    shutil.copy(os.path.join(parent_dir, test_input_dat ) , os.path.join(test_dir, test_input_dat ))
+    shutil.copy(os.path.join(parent_dir, test_config_json ) , os.path.join(test_dir, test_config_json ))
+    shutil.copy(os.path.join(parent_dir, test_config_xlsx ) , os.path.join(test_dir, test_config_xlsx ))
+    
     # Assert
-    # Ensure that files deleted correctly
-
-def test_MasterDataTestFileCopy001_csv():
-    """Create instance source file full name provided file has data"""
+    
+    assert os.path.isfile(os.path.join(test_dir, test_input_dat ))
+    assert os.path.isfile(os.path.join(test_dir, test_config_json ))
+    assert os.path.isfile(os.path.join(test_dir, test_config_xlsx ))
+    
+    os.chdir("..")
+    
+def test_dat_to_csv_use_json():
+    """Convert Dat file to CSV using Config Described in JSON"""
 
     # Expectation :
-    # Source file Confiuration file created in current working directory
-    # theOpen the file, if it is empty SourceFileEmptyError raised
-    
-    # Arrange --- # Crete a source file with a particular structure
-   
-    original                = os.path.join(os.getcwd(), 'MasterDataTestFile.fc.json') 
-    new_copy                = os.path.join(os.getcwd(), 'MasterDataTestFile.copy001.fc.json')
-    
-    delete_file_no_exception(new_copy)
-    shutil.copyfile(original, new_copy) 
-    assert                  os.path.isfile(new_copy)
+    # A csv version of the source file is created
 
-    original                = os.path.join(os.getcwd(), 'MasterDataTestFile.dat') 
-    new_copy                = os.path.join(os.getcwd(), 'MasterDataTestFile.copy001.dat')
+    # Arrange --- # copy template files to directory to convert to csv
     
-    delete_file_no_exception(new_copy)
-    shutil.copyfile(original, new_copy)   
-    assert                  os.path.isfile(new_copy)
+    os.chdir(test_dir)      
+    test_case_dir_name      = 'TestCase_001_dat_to_csv_using_json'
+    test_case_dir           = os.path.join(os.getcwd(), test_case_dir_name)
     
-    source_file             = new_copy
-    destination_file        = os.path.join(os.getcwd(), 'MasterDataTestFile.copy001.csv')
-    
-    delete_file_no_exception(destination_file)
-    
-    assert                  os.path.isfile(source_file)
-    assert not              os.path.isfile(destination_file)
+    delete_file_obj_no_exception(test_case_dir)
+
+    os.mkdir(test_case_dir)        # Create new empty test directory
+    os.chdir(test_case_dir)        # Make new Test Directory the current Directory
+
+    source_file             = os.path.join(test_case_dir, test_input_dat )
+    config_file             = os.path.join(test_case_dir, test_config_json)
+    dest_file               = os.path.join(test_case_dir, test_output_csv)
+
+    assert not os.path.isfile(source_file)
+    assert not os.path.isfile(config_file)
+    assert not os.path.isfile(dest_file)
+
+    shutil.copy(os.path.join(parent_dir, test_input_dat ) , source_file)
+    shutil.copy(os.path.join(parent_dir, test_config_json ) , config_file)
+
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
     
     # Act
     tfc.cls_text_file(sfn = source_file, ot = 'csv', fd = '|' , tq = '"',  log = True )
 
     # Assert
-    assert                  os.path.isfile(source_file)
-    assert                  os.path.isfile(destination_file)
 
-def test_MasterDataTestFileCopy002_json():
-    """Create instance source file full name provided file has data"""
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
+    assert os.path.isfile(dest_file)
+
+    os.chdir("..")
+    
+def test_dat_to_csv_use_xlsx():
+    """Convert Dat file to CSV using Config Described in XLSX"""
 
     # Expectation :
-    # Source file Confiuration file created in current working directory
-    # theOpen the file, if it is empty SourceFileEmptyError raised
-    
-    # Arrange --- # Crete a source file with a particular structure
-   
-    original                = os.path.join(os.getcwd(), 'MasterDataTestFile.fc.json') 
-    new_copy                = os.path.join(os.getcwd(), 'MasterDataTestFile.copy002.fc.json')
-    
-    delete_file_no_exception(new_copy)
-    shutil.copyfile(original, new_copy) 
-    assert                  os.path.isfile(new_copy)
+    # A csv version of the source file is created
 
-    original                = os.path.join(os.getcwd(), 'MasterDataTestFile.dat') 
-    new_copy                = os.path.join(os.getcwd(), 'MasterDataTestFile.copy002.dat')
+    # Arrange --- # Copy template files to directory to convert to csv
+
+    os.chdir(test_dir)      
+    test_case_dir_name      = 'TestCase_002_dat_to_csv_using_xlsx'
+    test_case_dir           = os.path.join(os.getcwd(), test_case_dir_name)
     
-    delete_file_no_exception(new_copy)
-    shutil.copyfile(original, new_copy)   
-    assert                  os.path.isfile(new_copy)
+    delete_file_obj_no_exception(test_case_dir)
+
+    os.mkdir(test_case_dir)        # Create new empty test directory
+    os.chdir(test_case_dir)        # Make new Test Directory the current Directory
+
+    source_file             = os.path.join(test_case_dir, test_input_dat )
+    config_file             = os.path.join(test_case_dir, test_config_xlsx)
+    dest_file               = os.path.join(test_case_dir, test_output_csv)
+
+    assert not os.path.isfile(source_file)
+    assert not os.path.isfile(config_file)
+    assert not os.path.isfile(dest_file)
+
+    shutil.copy(os.path.join(parent_dir, test_input_dat ) , source_file)
+    shutil.copy(os.path.join(parent_dir, test_config_xlsx ) , config_file)
+
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
     
-    source_file             = new_copy
-    destination_file        = os.path.join(os.getcwd(), 'MasterDataTestFile.copy002.json')
+    # Act
+    tfc.cls_text_file(sfn = source_file, ot = 'csv', fd = '|' , tq = '"',  log = True )
+
+    # Assert
+
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
+    assert os.path.isfile(dest_file)
     
-    delete_file_no_exception(destination_file)
+    os.chdir("..")
     
-    assert                  os.path.isfile(source_file)
-    assert not              os.path.isfile(destination_file)
+def test_dat_to_json_use_json():
+    """Convert Dat file to CSV using Config Described in JSON"""
+
+    # Expectation :
+    # A csv version of the source file is created
+
+    # Arrange --- # copy template files to directory to convert to csv
+
+    os.chdir(test_dir)      
+     
+    test_case_dir_name      = 'TestCase_003_dat_to_json_using_json'
+    test_case_dir           = os.path.join(os.getcwd(), test_case_dir_name)
+    
+    delete_file_obj_no_exception(test_case_dir)
+
+    os.mkdir(test_case_dir)        # Create new empty test directory
+    os.chdir(test_case_dir)        # Make new Test Directory the current Directory
+
+    source_file             = os.path.join(test_case_dir, test_input_dat)
+    config_file             = os.path.join(test_case_dir, test_config_json)
+    dest_file               = os.path.join(test_case_dir, test_output_json)
+
+    assert not os.path.isfile(source_file)
+    assert not os.path.isfile(config_file)
+    assert not os.path.isfile(dest_file)
+
+    shutil.copy(os.path.join(parent_dir, test_input_dat ) , source_file)
+    shutil.copy(os.path.join(parent_dir, test_config_json ) , config_file)
+
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
     
     # Act
     tfc.cls_text_file(sfn = source_file, ot = 'json', fd = '|' , tq = '"',  log = True )
 
     # Assert
-    assert                  os.path.isfile(source_file)
-    assert                  os.path.isfile(destination_file)
 
-def test_MasterDataTestFileCopy003_dat():
-    """Create instance source file full name provided file has data"""
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
+    assert os.path.isfile(dest_file)
+
+    os.chdir("..")
+    
+def test_dat_to_json_use_xlsx():
+    """Convert Dat file to CSV using Config Described in XLSX"""
 
     # Expectation :
-    # Source file Confiuration file created in current working directory
-    # theOpen the file, if it is empty SourceFileEmptyError raised
-    
-    # Arrange --- # Crete a source file with a particular structure
-   
-    original                = os.path.join(os.getcwd(), 'MasterDataTestFile.fc.json') 
-    new_copy                = os.path.join(os.getcwd(), 'MasterDataTestFile.copy003.fc.json')
-    
-    delete_file_no_exception(new_copy)
-    shutil.copyfile(original, new_copy) 
-    assert                  os.path.isfile(new_copy)
+    # A csv version of the source file is created
 
-    original                = os.path.join(os.getcwd(), 'MasterDataTestFile.dat') 
-    new_copy                = os.path.join(os.getcwd(), 'MasterDataTestFile.copy003.dat')
+    # Arrange --- # Copy template files to directory to convert to csv
+
+    os.chdir(test_dir)      
+
+    test_case_dir_name      = 'TestCase_004_dat_to_json_using_xlsx'
+    test_case_dir           = os.path.join(os.getcwd(), test_case_dir_name)
     
-    delete_file_no_exception(new_copy)
-    shutil.copyfile(original, new_copy)   
-    assert                  os.path.isfile(new_copy)
+    delete_file_obj_no_exception(test_case_dir)
+
+    os.mkdir(test_case_dir)        # Create new empty test directory
+    os.chdir(test_case_dir)        # Make new Test Directory the current Directory
+
+    source_file             = os.path.join(test_case_dir, test_input_dat )
+    config_file             = os.path.join(test_case_dir, test_config_xlsx)
+    dest_file               = os.path.join(test_case_dir, test_output_json)
+
+    assert not os.path.isfile(source_file)
+    assert not os.path.isfile(config_file)
+    assert not os.path.isfile(dest_file)
+
+    shutil.copy(os.path.join(parent_dir, test_input_dat ) , source_file)
+    shutil.copy(os.path.join(parent_dir, test_config_xlsx ) , config_file)
+
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
     
-    source_file             = new_copy
-    destination_file        = os.path.join(os.getcwd(), 'MasterDataTestFile.copy003.out.dat')
+    # Act
+    tfc.cls_text_file(sfn = source_file, ot = 'json', fd = '|' , tq = '"',  log = True )
+
+    # Assert
+
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
+    assert os.path.isfile(dest_file)
+
+    os.chdir("..")
     
-    delete_file_no_exception(destination_file)
+def test_dat_to_dat_use_json():
+    """Convert Dat file to Dat using Config Described in json"""
+
+    # Expectation :
+    # A csv version of the source file is created
+
+    # Arrange --- # Copy template files to directory to convert to csv
+
+    os.chdir(test_dir)      
+
+    test_case_dir_name      = 'TestCase_005_dat_to_dat_using_json'
+    test_case_dir           = os.path.join(os.getcwd(), test_case_dir_name)
     
-    assert                  os.path.isfile(source_file)
-    assert not              os.path.isfile(destination_file)
+    delete_file_obj_no_exception(test_case_dir)
+
+    os.mkdir(test_case_dir)        # Create new empty test directory
+    os.chdir(test_case_dir)        # Make new Test Directory the current Directory
+
+    source_file             = os.path.join(test_case_dir, test_input_dat)
+    config_file             = os.path.join(test_case_dir, test_config_json)
+    dest_file               = os.path.join(test_case_dir, test_output_dat)
+
+    assert not os.path.isfile(source_file)
+    assert not os.path.isfile(config_file)
+    assert not os.path.isfile(dest_file)
+
+    shutil.copy(os.path.join(parent_dir, test_input_dat ) , source_file)
+    shutil.copy(os.path.join(parent_dir, test_config_json ) , config_file)
+
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
     
     # Act
     tfc.cls_text_file(sfn = source_file, ot = 'dat', fd = '|' , tq = '"',  log = True )
 
     # Assert
-    assert                  os.path.isfile(source_file)
-    assert                  os.path.isfile(destination_file)
 
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
+    assert os.path.isfile(dest_file)
 
+    os.chdir("..")
+    
+def test_dat_to_dat_use_xlsx():
+    """Convert Dat file to Dat using Config Described in xlsx"""
+
+    # Expectation :
+    # A csv version of the source file is created
+
+    # Arrange --- # Copy template files to directory to convert to csv
+
+    os.chdir(test_dir)      
+
+    test_case_dir_name      = 'TestCase_006_dat_to_dat_using_xlsx'
+    test_case_dir           = os.path.join(os.getcwd(), test_case_dir_name)
+    
+    delete_file_obj_no_exception(test_case_dir)
+
+    os.mkdir(test_case_dir)        # Create new empty test directory
+    os.chdir(test_case_dir)        # Make new Test Directory the current Directory
+
+    source_file             = os.path.join(test_case_dir, test_input_dat)
+    config_file             = os.path.join(test_case_dir, test_config_xlsx)
+    dest_file               = os.path.join(test_case_dir, test_output_dat)
+
+    assert not os.path.isfile(source_file)
+    assert not os.path.isfile(config_file)
+    assert not os.path.isfile(dest_file)
+
+    shutil.copy(os.path.join(parent_dir, test_input_dat ) , source_file)
+    shutil.copy(os.path.join(parent_dir, test_config_xlsx ) , config_file)
+
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
+    
+    # Act
+    tfc.cls_text_file(sfn = source_file, ot = 'dat', fd = '|' , tq = '"',  log = True )
+
+    # Assert
+
+    assert os.path.isfile(source_file)
+    assert os.path.isfile(config_file)
+    assert os.path.isfile(dest_file)
+    
+    os.chdir("..")
+    
 if __name__ == "__main__":
+
     print("Done")
