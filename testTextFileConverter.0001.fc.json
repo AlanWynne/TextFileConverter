@@ -1,0 +1,85 @@
+{
+    "TITLE": "Flat Text file to csv, json conversion",
+    "source_file_name": "testTextFileConverter.0001.dat",
+    "field_delimeter": ",",
+    "text_qualifier": "'",
+    "output_type": "csv",
+    "record_structures": {
+        "Record_Name_0": {
+            "field_name_0": {
+                "offset": 0,
+                "length": 10,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [
+                    "At least one field should have identifier values defined",
+                    "If no field has identifier values the output will be empty",
+                    "although the identifiers allow for more than one",
+                    "Normally only one required",
+                    "remove items not required"
+                ],
+                "filters": [
+                    "choose records with these values",
+                    "only create required filters ",
+                    "create empty list if no filters required"
+                ]
+            },
+            "field_name_1": {
+                "offset": 10,
+                "length": 10,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [
+                    "At least one field should have identifier values defined",
+                    "If no field has identifier values the output will be empty",
+                    "although the identifiers allow for more than one",
+                    "Normally only one required",
+                    "remove items not required"
+                ],
+                "filters": [
+                    "choose records with these values",
+                    "only create required filters ",
+                    "create empty list if no filters required"
+                ]
+            }
+        },
+        "Record_Name_1": {
+            "field_name_0": {
+                "offset": 0,
+                "length": 10,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [
+                    "At least one field should have identifier values defined",
+                    "If no field has identifier values the output will be empty",
+                    "although the identifiers allow for more than one",
+                    "Normally only one required",
+                    "remove items not required"
+                ],
+                "filters": [
+                    "choose records with these values",
+                    "only create required filters ",
+                    "create empty list if no filters required"
+                ]
+            },
+            "field_name_1": {
+                "offset": 10,
+                "length": 10,
+                "decimals": 0,
+                "data_type": "<class 'str'>",
+                "identifiers": [
+                    "At least one field should have identifier values defined",
+                    "If no field has identifier values the output will be empty",
+                    "although the identifiers allow for more than one",
+                    "Normally only one required",
+                    "remove items not required"
+                ],
+                "filters": [
+                    "choose records with these values",
+                    "only create required filters ",
+                    "create empty list if no filters required"
+                ]
+            }
+        }
+    }
+}
