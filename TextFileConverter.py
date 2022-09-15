@@ -28,8 +28,8 @@ import datetime as dt
 import json
 import PySimpleGUI as sg
 import pandas as pd
-
 import openpyxl
+from openpyxl.reader.excel import load_workbook
 
 # ===============================================================================
 # Global Data
@@ -80,6 +80,7 @@ class OutputTypeNotSupportedError(Exception):
     """An exception class for empty Source files"""
     pass
 
+
 # ===============================================================================
 # Global public classes
 
@@ -104,7 +105,7 @@ class cls_text_file:
     INSTRUCTIONS = f'Utility to do conversions on Data:\\n\\n' \
                    f'\\tInvoking this utility without parametrs will,\\n' \
                    f'\\tcreate a file in current working directory called "{CONFIG_FILE_FULL_NAME}".\\n' \
-                   f'\\tin order to use this utility, you need to edit this file and save it with a name of your choice,\\n' \ 
+                   f'\\tin order to use this utility, you need to edit this file and save it with a name of your choice,\\n' \
                    f'\\twith the extension of ".fc.json". The file name should be the same name as the file you wish to convert.\\n\\n' \
                    f'\\tInvoking this utility with a parametrs of the file name you wish to convert, will cause the utility to look\\n' \
                    f'\\tfor the "your_file_name.fc.json" file. If found it will try to use it to do the file conversion. If it cannot\\n' \
@@ -140,11 +141,11 @@ class cls_text_file:
 
                 TextFileConverter (sfn=None, ot=None, fd=None, tq=None)
 
-                sfn             : The name of the source file to be converted to the desired output.
-                ot              : The desired output type, convertion process, currently csv or json
-                fd              : Applicable for csv is the field seperator or delimiter
-                tq              : The text qualifier, the character to be used to enclose character or string fields
-                log             : log=True or Log=False or left out,  used to determine if a log should be written or not.
+                sfn     : The name of the source file to be converted to the desired output.
+                ot      : The desired output type, conversion process, currently csv or json
+                fd      : Applicable for csv is the field seperator or delimiter
+                tq      : The text qualifier, the character to be used to enclose character or string fields
+                log     : log=True or Log=False or left out,  used to determine if a log should be written or not.
 
         """
         print(help_text)
@@ -215,7 +216,7 @@ class cls_text_file:
                 else:
                     file_types_descrip = str(file_types)
 
-        if not file_full_name:     # no file_name provided, get file_name.
+        if not file_full_name:  # no file_name provided, get file_name.
             message = message + ' ' + 'Please select a file?'
             file_full_name = sg.popup_get_file(
                 message,
@@ -370,10 +371,10 @@ class cls_text_file:
         self.log(f'{self.ot=}')
         return self.ot
 
-#    def get_sf_attributes(self):
-#
-#        self.log(f'{df_sf_attributes=}')
-#        return (df_sf_attributes)
+    #    def get_sf_attributes(self):
+    #
+    #        self.log(f'{df_sf_attributes=}')
+    #        return (df_sf_attributes)
 
     def get_sf_configuration_json(self):
         """ get/set the source file configuration using json configuration file"""
@@ -722,7 +723,7 @@ class cls_text_file:
                         self.log(f'{field_name=} {offset=} {end_offset=} {field_value=}')
                         record_dd.update({field_name: field_value})
                         data_record = data_record + field_value.ljust(length)
-                        if data_type == "<class 'int'>" and field_values.isdecimal():
+                        if data_type == "<class 'int'>" and field_value.isdecimal():
                             if csv_record:
                                 csv_record = csv_record + self.fd + field_value.ljust(length)
                             else:
