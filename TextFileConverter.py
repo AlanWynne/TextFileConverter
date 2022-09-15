@@ -17,7 +17,12 @@
 # Contributor(s): Alan Wynne
 #
 
-__doc__ = """ Text File Converter is a tool to take structured text or data and convert it to another format. Supported formats are csv, json and structured text data files. """
+__doc__ = """
+
+Text File Converter is a tool to take structured text or data and convert it to another format. 
+Supported formats are csv, json and structured text data files. 
+
+"""
 
 # ===============================================================================
 # import statements
